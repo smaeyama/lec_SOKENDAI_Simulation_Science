@@ -406,7 +406,7 @@ plt.close()
 
 # --- Display in notebook ---
 from IPython.display import Video
-Video("compare_svd_compression.mp4", embed=False)
+Video("compare_svd_compression.mp4", embed=True)
 
 
 # In[ ]:
