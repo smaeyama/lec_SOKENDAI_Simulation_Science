@@ -211,6 +211,50 @@ def hasegawa_wakatani_simulation(flag_adiabaticity="constant"):
     for it in range(nsave):
         output_netcdf(t, dns, phi, x, y, first=(it == 0))
         t, dns, omg, phi, qq_dns, qq_omg = inner_nskiploop_jit((t, dns, omg, phi, qq_dns, qq_omg))
+
+    performance_measurement = False
+    if performance_measurement:
+        def measure_jax_time(label, f, n=10, warmup=3):
+            """
+            Measure average execution time of a JAX function after JIT compilation.
+
+            - Performs warmup runs to trigger JIT compilation and cache stabilization.
+            - Synchronizes using jax.block_until_ready().
+            - Executes f() n times and reports average wall-clock time.
+
+            Parameters
+            ----------
+            label : str
+                Label printed in the report.
+            f : callable
+                Zero-argument callable returning JAX array(s).
+            n : int, optional
+                Number of timed repetitions (default: 100).
+            warmup : int, optional
+                Number of warmup runs before measurement (default: 3).
+            """
+            # --- Warmup (JIT compile + cache)
+            y = None
+            for _ in range(warmup):
+                y = f()
+            jax.block_until_ready(y)
+
+            # --- Elapsed time measurement
+            t0 = perf_counter()
+            for _ in range(n):
+                y = f()
+            jax.block_until_ready(y)
+            t1 = perf_counter()
+
+            print(f"{label:30s}: {(t1 - t0) / n:.8f} sec/call  (n={n})")
+            return
+        measure_jax_time("inner_nskiploop", lambda: inner_nskiploop_jit((t, dns, omg, phi, qq_dns, qq_omg)))
+        measure_jax_time("rkg4_step", lambda: rkg4_step(dns, omg, phi, qq_dns, qq_omg))
+        measure_jax_time("time_derivatives", lambda: time_derivatives(dns, omg, phi))
+        measure_jax_time("poisson_bracket(phi,dns)", lambda: calc_poisson_bracket(phi, dns))
+        measure_jax_time("poisson_bracket(phi,omg)", lambda: calc_poisson_bracket(phi, omg))
+        measure_jax_time("poisson_solver", lambda: poisson_solver(omg))
+        
     return
 
 if __name__ == "__main__":
