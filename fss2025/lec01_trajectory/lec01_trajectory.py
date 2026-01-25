@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[25]:
 
 
 import numpy as np
@@ -21,13 +21,19 @@ b0 = 3.0     # Magnetic field strength
 q0 = 1.0     # Safety factor
 s0 = 3.0     # Magnetic shear
 
+# --- Time step control ---
+dt = 0.01
+nt = 38000
+nskip = 2
+nsave = nt // nskip
+
 # --- Model function of magnetic field ---
 def func_b(x, y, z):
     mr = np.sqrt(x**2 + y**2)
     sr = np.sqrt((mr - r0)**2 + z**2)
     q = q0 * (1.0 + s0 * sr / a0)
-    bx = - b0 * x * z / (q * mr**2) + b0 * r0 * y / mr**2
-    by = - b0 * y * z / (q * mr**2) - b0 * r0 * x / mr**2
+    bx = b0 * r0 * y / mr**2 - b0 * x * z / (q * mr**2)
+    by = - b0 * r0 * x / mr**2 - b0 * y * z / (q * mr**2)
     bz = b0 * (mr - r0) / (q * mr)
     return np.array([bx, by, bz])
 
@@ -51,8 +57,8 @@ def time_integration_rk4(xv):
 def compute_trajectory(t_init, xv_init):
     t = t_init
     xv = xv_init
-    trajectory = []
-    time = []
+    time = [t_init]
+    trajectory = [xv_init]
     for _ in range(nsave):
         for _ in range(nskip):
             xv = time_integration_rk4(xv)
@@ -63,12 +69,6 @@ def compute_trajectory(t_init, xv_init):
     trajectory = np.array(trajectory)
     time = np.array(time)
     return time, trajectory
-
-# --- Set parameters ---
-dt = 0.01
-nt = 38000
-nskip = 2
-nsave = nt // nskip + 1
 
 # --- Set initial values ---
 t_init = 0.0
@@ -83,7 +83,7 @@ print("Elapsed time for computation [sec]:", elt1 - elt0)
 print(time.shape, trajectory.shape)
 
 
-# In[2]:
+# In[26]:
 
 
 x, y, z, vx, vy, vz = trajectory.T
@@ -127,7 +127,7 @@ ax.set_title("Poloidal cross-section")
 plt.show()
 
 
-# In[3]:
+# In[27]:
 
 
 # --- Check energy conservation ---
@@ -141,7 +141,7 @@ plt.title("Energy conservation check")
 plt.show()
 
 
-# In[ ]:
+# In[28]:
 
 
 elt0 = timer()

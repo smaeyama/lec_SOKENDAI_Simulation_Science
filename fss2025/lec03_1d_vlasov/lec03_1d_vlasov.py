@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[71]:
 
 
 import numpy as np
@@ -13,8 +13,15 @@ from time import time as timer
 
 # --- 1D electrostatic Vlasov-Poisson simulation ---
 def vlasov_simulation(flag_init="linear-Landau"):
-    Nx, Nv = 128, 256
-    Lx, Lv = 10 * np.pi, 5.0
+    if flag_init == "linear-Landau" or flag_init == "nonlinear-Landau" or flag_init == "bump-on-tail":
+        Nx, Nv = 128, 256
+        Lx, Lv = 10 * np.pi, 5.0
+    elif flag_init == "two-stream":
+        Nx, Nv = 128, 512
+        Lx, Lv = 100, 9.0
+    else:
+        raise ValueError(f"Unknown flag_init: {flag_init}")
+
     dx, dv = Lx / Nx, 2 * Lv / (Nv - 1)
     x = np.linspace(0, Lx, Nx, endpoint=False)
     v = np.linspace(-Lv, Lv, Nv)
@@ -53,6 +60,20 @@ def vlasov_simulation(flag_init="linear-Landau"):
             phase = 2 * np.pi * rand_phases[ik]
             f += ampl * np.cos(2 * np.pi * (ik * x / Lx + phase))[None, :] * fmx[:, None]
         f += f0_v[:, None]
+
+    elif flag_init == "two-stream":
+        ampl = 2e-3
+        nb, vb, vtb = 0.5, 3.0, 1.0
+        f0b_pos = np.exp(-0.5 * ((v - vb) / vtb)**2) / np.sqrt(2 * np.pi * vtb**2)
+        f0b_neg = np.exp(-0.5 * ((v + vb) / vtb)**2) / np.sqrt(2 * np.pi * vtb**2)
+        f0_v = (1.0 - nb) * f0b_pos + nb * f0b_neg
+        f = np.zeros((Nv, Nx))
+        phase1 = 2 * np.pi * np.random.rand(Nx // 4)
+        phase2 = 2 * np.pi * np.random.rand(Nx // 4)
+        for ik in range(1, Nx // 4):
+            f = f + ampl * np.cos(2 * np.pi * (ik * x / Lx + phase1[ik]))[None, :] * f0b_pos[:, None] + ampl * np.cos(2 * np.pi * (ik * x / Lx + phase2[ik]))[None, :] * f0b_neg[:, None]
+        f += f0_v[:, None]
+
     else:
         raise ValueError(f"Unknown flag_init: {flag_init}")
 
@@ -108,13 +129,13 @@ def vlasov_simulation(flag_init="linear-Landau"):
 # --- Run the simulation ---
 elt0 = timer()
 print("Start 1D Vlasov simulation.")
-t_all, f_all, field_all, f0, x, v = vlasov_simulation(flag_init="bump-on-tail")
+t_all, f_all, field_all, f0, x, v = vlasov_simulation(flag_init="two-stream")
 print("Simulation complete.")
 elt1 = timer(); print("Elapsed time [sec] :", elt1 - elt0)
 print(t_all.shape, f_all.shape, x.shape, v.shape)
 
 
-# In[2]:
+# In[72]:
 
 
 def plot_phase_and_phi(fvx, phi, t, x, v):
@@ -137,13 +158,13 @@ def plot_phase_and_phi(fvx, phi, t, x, v):
     plt.show()
 
 
-for t_plot in [0.0, 10.0, 15.0]:
+for t_plot in [0.0, 10.0, 15.0, 20.0]:
     idx = np.argmin(np.abs(t_all - t_plot))
     print(f"t ≈ {t_all[idx]:.2f}, index = {idx}")
     plot_phase_and_phi(f_all[idx], field_all[1][idx], t_all[idx], x, v)
 
 
-# In[3]:
+# In[73]:
 
 
 # --- Plot energy conservation ---
@@ -163,11 +184,12 @@ ax.set_ylabel("Energy")
 ax.set_title("Energy conservation")
 ax.legend()
 ax.grid(True)
+ax.set_yticks(100*np.arange(6))
 plt.tight_layout()
 plt.show()
 
 
-# In[ ]:
+# In[74]:
 
 
 # --- Animation ---
