@@ -8,6 +8,7 @@ import jax.numpy as jnp
 from jax.numpy.fft import fft2, ifft2, fftfreq
 import os
 from time import time as timer
+from time import perf_counter
 
 def hasegawa_wakatani_simulation(flag_adiabaticity="constant"):
     # --- Parameters from param.namelist ---
